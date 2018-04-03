@@ -47,13 +47,12 @@
 
 (deffunction pedido-reserva (?numpedido)
 
-    ; (filme (titulo "Raiders of the Lost Ark") (realizador "Steven Spielberg")
-    ;    (ano 1981) (genero ação aventura))
 
     (assert (reserva-ativada ?numpedido)
 
-    ; if ?decisao == true
-    ; printout t Decisao: "O pedido " ?numpedido " foi aceite" crlf
+; insere um novo pedido de reserva com o numero ?numpedido
+(deffunction pedido-reserva (?numpedido)
+    (assert (reserva-ativada ?numpedido))
 )
 
 ; Compara o dia/mes/ano de levantamento com o dia/mes/ano de levantamento
