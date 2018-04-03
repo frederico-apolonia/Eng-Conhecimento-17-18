@@ -11,7 +11,7 @@
     (multislot data-validade-carta)
 )
 
-(deftemplate pedidos-reserva
+(deftemplate pedido-reserva
     (slot id-reserva)
     (slot id-cliente)
     (multislot data-levantamento)
@@ -45,10 +45,22 @@
     (slot ha-danos)
 )
 
-(deffunction pedido-reserva (?numpedido)
+(deffacts pedidos-reserva
+    (pedido-reserva (id-reserva 21) (id-cliente 1) (data-levantamento 1 1 2018) (data-devolucao 16 1 2018) (classe mini) (modelo smart))
+    (pedido-reserva (id-reserva 22) (id-cliente 1) (data-levantamento 15 1 2018) (data-devolucao 20 1 2018) (classe mini) (modelo smart))
+)
 
+(defrule verifica-reserva
+    ?nova-reserva <- (reserva-ativada ?num)
+    ?pedido <- (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?d ?m ?a)) 
+    (pedido-reserva (id-reserva ?num1&~?num) (id-cliente ?id-c) (data-devolucao ?d-d ?m-d ?a-d))
 
-    (assert (reserva-ativada ?numpedido)
+    (test (or (or (< ?d ?d-d ) (< ?m ?m-d) ) (> ?a ?a-d) ) )
+
+    =>
+    (retract ?nova-reserva ?pedido)
+    (printout t "Reserva removida. Ja existe uma reserva em curso feita por este cliente." crlf)
+)
 
 ; insere um novo pedido de reserva com o numero ?numpedido
 (deffunction pedido-reserva (?numpedido)
