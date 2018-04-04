@@ -50,10 +50,12 @@
     (pedido-reserva (id-reserva 22) (id-cliente 1) (data-levantamento 15 1 2018) (data-devolucao 20 1 2018) (classe mini) (modelo smart))
 )
 
-(defrule verifica-reserva
+; verifica se a reserva pode ser levantada, isto e, se o cliente nao tem outra reserva
+; a decorrer
+(defrule verifica-reserva-data
     ?nova-reserva <- (reserva-ativada ?num)
     ?pedido <- (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?d ?m ?a)) 
-    (pedido-reserva (id-reserva ?num1&~?num) (id-cliente ?id-c) (data-devolucao ?d-d ?m-d ?a-d))
+    (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?d-d ?m-d ?a-d))
 
     (test (or (or (< ?d ?d-d ) (< ?m ?m-d) ) (> ?a ?a-d) ) )
 
