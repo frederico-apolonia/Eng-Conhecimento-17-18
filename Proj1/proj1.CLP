@@ -4,8 +4,7 @@
 ; Renato Gondin
 
 (deftemplate clientes
-    (slot id
-        (type INTEGER))
+    (slot id)
     (multislot name)
     (multislot data-nascimento)
     (multislot data-carta)
@@ -13,16 +12,14 @@
 )
 
 (deftemplate pedido-reserva
-    (slot id-reserva
-        (type INTEGER))
-    (slot id-cliente
-        (type INTEGER))
+    (slot id-reserva)
+    (slot id-cliente)
     (multislot data-levantamento)
     (multislot data-devolucao)
     (slot classe
         (type SYMBOL)
-        (allowed-symbol mini economico compacto familiar executivo suv luxo)
-        (default mini)
+        (allowed-symbols mini economico compacto familiar executivo suv luxo)
+        (default mini))
     (slot modelo)
 )
 
