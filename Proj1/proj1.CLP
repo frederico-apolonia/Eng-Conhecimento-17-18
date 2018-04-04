@@ -4,7 +4,8 @@
 ; Renato Gondin
 
 (deftemplate clientes
-    (slot id)
+    (slot id
+        (type INTEGER))
     (multislot name)
     (multislot data-nascimento)
     (multislot data-carta)
@@ -12,24 +13,17 @@
 )
 
 (deftemplate pedido-reserva
-    (slot id-reserva)
-    (slot id-cliente)
+    (slot id-reserva
+        (type INTEGER))
+    (slot id-cliente
+        (type INTEGER))
     (multislot data-levantamento)
     (multislot data-devolucao)
-    (slot classe)
+    (slot classe
+        (type SYMBOL)
+        (allowed-symbol mini economico compacto familiar executivo suv luxo)
+        (default mini)
     (slot modelo)
-)
-
-(deftemplate pedidos-reserva-nao-cliente
-    (slot id-reserva)
-    (multislot data-levantamento)
-    (multislot data-devolucao)
-    (slot classe)
-    (slot modelo)
-    (multislot nome)
-    (multislot data-nascimento)
-    (multislot data-carta)
-    (multislot data-validade-carta)
 )
 
 (deftemplate automoveis-disponiveis
@@ -54,33 +48,29 @@
 ; a decorrer
 (defrule verifica-reserva-data
     ?nova-reserva <- (reserva-ativada ?num)
-    ?pedido <- (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?d ?m ?a)) 
+    (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?d ?m ?a)) 
     (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?d-d ?m-d ?a-d))
 
     (test (or (or (< ?d ?d-d ) (< ?m ?m-d) ) (> ?a ?a-d) ) )
 
     =>
-    (retract ?nova-reserva ?pedido)
-    (printout t "Reserva removida. Ja existe uma reserva em curso feita por este cliente." crlf)
+    (retract ?nova-reserva)
+    (printout t "Reserva nao ativada." crlf "Ja existe uma reserva em curso feita por este cliente." crlf)
+)
+
+; verifica se o cliente que esta a efetuar a nova reserva esta na lista negra
+; (nao pode efetuar reservas)
+(defrule verifica-reserva-negra
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva (id-reserva ?num) (id-cliente ?id-c))
+    (lista-negra ?id-c)
+    
+    =>
+    (retract ?nova-reserva)
+    (printout t "Reserva nao ativada." crlf "Cliente " ?id-c " esta na lista negra." crlf)
 )
 
 ; insere um novo pedido de reserva com o numero ?numpedido
 (deffunction pedido-reserva (?numpedido)
     (assert (reserva-ativada ?numpedido))
-)
-
-; Compara o dia/mes/ano de levantamento com o dia/mes/ano de levantamento
-; e recepcao da reserva anterior.
-; ?l e a data de levantamento da reserva atual
-; ?r-a e a data de recepcao da reserva anterior
-; True se esta bom False se nao
-(deffunction compare-date-entry (?l ?r-a)
-
-    (if (>= ?l ?r-a)
-        then
-        (return 1)
-        else
-        (return 0)
-    )
-
 )
