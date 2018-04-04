@@ -3,7 +3,7 @@
 ; Tiago Santos
 ; Renato Gondin
 
-(deftemplate clientes
+(deftemplate cliente
     (slot id)
     (multislot name)
     (multislot data-nascimento)
@@ -21,6 +21,21 @@
         (allowed-symbols mini economico compacto familiar executivo suv luxo)
         (default mini))
     (slot modelo)
+)
+
+(deftemplate pedidos-reserva-nao-cliente
+    (slot id-reserva)
+    (multislot data-levantamento)
+    (multislot data-devolucao)
+    (slot classe
+        (type SYMBOL)
+        (allowed-symbols mini economico compacto familiar executivo suv luxo)
+        (default mini))
+    (slot modelo)
+    (multislot nome)
+    (multislot data-nascimento)
+    (multislot data-carta)
+    (multislot data-validade-carta)
 )
 
 (deftemplate automoveis-disponiveis
@@ -65,6 +80,29 @@
     =>
     (retract ?nova-reserva)
     (printout t "Reserva nao ativada." crlf "Cliente " ?id-c " esta na lista negra." crlf)
+)
+
+; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
+; cliente nao registado)
+; se for, cria um novo cliente com os dados
+(defrule verifica-reserva-nao-cliente
+    (reserva-ativada ?num)
+    ?reserva-nao-cliente <- (pedidos-reserva-nao-cliente 
+        (id-reserva ?num) (data-levantamento $?data-lev) (data-devolucao $?data-dev)
+        (classe ?classe) (modelo ?modelo) 
+        (nome $?nome) 
+        (data-nascimento $?data-nasc) (data-carta $?data-carta) 
+        (data-validade-carta $?data-val-carta-cond) )
+
+    ?novo-id-c <- (random)
+    =>
+    (assert (cliente (id ?novo-id-c) (name ?nome)
+            (data-nascimento ?data-nasc) (data-carta ?data-carta) 
+            (data-validade-carta ?data-val-carta-cond) ))
+    (assert (pedido-reserva (id-reserva ?num) (id-cliente ?novo-id-c)
+            (data-levantamento ?data-lev) (data-devolucao ?data-dev)
+            (classe ?classe) (modelo ?modelo) ))
+    (retract ?reserva-nao-cliente) ; cliente deixa de ser nao cliente
 )
 
 ; insere um novo pedido de reserva com o numero ?numpedido
