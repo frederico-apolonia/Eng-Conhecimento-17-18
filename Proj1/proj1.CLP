@@ -52,15 +52,24 @@
 )
 
 (deffacts pedidos-reserva
-    (pedido-reserva (id-reserva 21) (id-cliente 1) (data-levantamento 1 1 2018) (data-devolucao 16 1 2018) (classe mini) (modelo smart))
-    (pedido-reserva (id-reserva 22) (id-cliente 1) (data-levantamento 15 1 2018) (data-devolucao 20 1 2018) (classe mini) (modelo smart))
+    (pedido-reserva (id-reserva 21) (id-cliente 1)
+    (data-levantamento 1 1 2018) (data-devolucao 16 1 2018)
+    (classe mini) (modelo smart))
+    (pedido-reserva (id-reserva 22) (id-cliente 1)
+    (data-levantamento 15 1 2018) (data-devolucao 20 1 2018)
+    (classe mini) (modelo smart))
+
+    (pedidos-reserva-nao-cliente (id-reserva 23)
+    (data-levantamento 1 1 2018) (data-devolucao 15 1 2018)
+    (nome Ze Pascal) (data-nascimento 15 02 1996)
+    (data-carta 15 01 2015) (data-validade-carta 15 01 2040) )
 )
 
 ; verifica se a reserva pode ser levantada, isto e, se o cliente nao tem outra reserva
 ; a decorrer
 (defrule verifica-reserva-data
     ?nova-reserva <- (reserva-ativada ?num)
-    (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?d ?m ?a)) 
+    (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?d ?m ?a))
     (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?d-d ?m-d ?a-d))
 
     (test (or (or (< ?d ?d-d ) (< ?m ?m-d) ) (> ?a ?a-d) ) )
@@ -76,7 +85,7 @@
     ?nova-reserva <- (reserva-ativada ?num)
     (pedido-reserva (id-reserva ?num) (id-cliente ?id-c))
     (lista-negra ?id-c)
-    
+
     =>
     (retract ?nova-reserva)
     (printout t "Reserva nao ativada." crlf "Cliente " ?id-c " esta na lista negra." crlf)
@@ -87,19 +96,19 @@
 ; se for, cria um novo cliente com os dados
 (defrule verifica-reserva-nao-cliente
     (reserva-ativada ?num)
-    ?reserva-nao-cliente <- (pedidos-reserva-nao-cliente 
+    ?reserva-nao-cliente <- (pedidos-reserva-nao-cliente
         (id-reserva ?num) (data-levantamento $?data-lev) (data-devolucao $?data-dev)
-        (classe ?classe) (modelo ?modelo) 
-        (nome $?nome) 
-        (data-nascimento $?data-nasc) (data-carta $?data-carta) 
+        (classe ?classe) (modelo ?modelo)
+        (nome $?nome)
+        (data-nascimento $?data-nasc) (data-carta $?data-carta)
         (data-validade-carta $?data-val-carta-cond) )
-
-    ?novo-id-c <- (random)
     =>
-    (assert (cliente (id ?novo-id-c) (name ?nome)
-            (data-nascimento ?data-nasc) (data-carta ?data-carta) 
+    (bind ?id-novo-c (random 1111111 9999999))
+
+    (assert (cliente (id ?id-novo-c) (name ?nome)
+            (data-nascimento ?data-nasc) (data-carta ?data-carta)
             (data-validade-carta ?data-val-carta-cond) ))
-    (assert (pedido-reserva (id-reserva ?num) (id-cliente ?novo-id-c)
+    (assert (pedido-reserva (id-reserva ?num) (id-cliente ?id-novo-c)
             (data-levantamento ?data-lev) (data-devolucao ?data-dev)
             (classe ?classe) (modelo ?modelo) ))
     (retract ?reserva-nao-cliente) ; cliente deixa de ser nao cliente
