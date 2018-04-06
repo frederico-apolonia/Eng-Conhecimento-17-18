@@ -146,9 +146,15 @@
 
 ;afeta um carro cujo pedido inclui marca e modelo
 (defrule afeta-carro-reserva-modelo 
-	(associa-carro-res ?numpedido)
+
+    (exists (associa-carro-res ?numpedido))
+    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil) )  ) )
+    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
+
+	?associa-carro <- (associa-carro-res ?numpedido)
+    ?reserva-ativada <- (reserva-ativada ?numpedido)
 	?pedidos-reserva <- (pedido-reserva 
-		(id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) )
+		(id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil)) )
 	?carro-disponivel <- (automovel-disponivel
 		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
 		(km-percorridos ?km-percorridos) )
@@ -159,12 +165,19 @@
 		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
 		(km-percorridos ?km-percorridos) ))
 	(retract ?carro-disponivel)
+    (retract ?associa-carro)
+    (retract ?reserva-ativada)
 	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
 )
 
 ;afeta um carro cujo pedido nao inclui modelo
 ;
 (defrule afeta-carro-reserva 
+
+    (exists (associa-carro-res ?numpedido))
+    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(eq ?modelo nil) )  ) )
+    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
+
 	?associa-carro <- (associa-carro-res ?numpedido)
     ?reserva-ativada <- (reserva-ativada ?numpedido)
 	?pedidos-reserva <- (pedido-reserva 
@@ -173,8 +186,8 @@
 	?carro-disponivel <- (automovel-disponivel
 		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
 		(km-percorridos ?km-percorridos) )
-	=>
-	
+    
+    =>	
 	(assert (pedido-ativo ?numpedido ?matricula))
 	(assert (automovel-indisponivel 
 		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
