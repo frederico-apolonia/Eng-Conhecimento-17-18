@@ -73,15 +73,12 @@
 )
 
 (deffacts carros
-	(automovel-disponivel (classe mini) (marcamodelo mazda-2) 
-	(km-percorridos 201999) (matricula 69-CU-96))
-	(automovel-disponivel (classe mini) (marcamodelo smart) 
+	(automovel-disponivel (classe mini) (marcamodelo smart)
 	(km-percorridos 154600) (matricula 01-AB-10))
-	(automovel-disponivel (classe mini) (marcamodelo smart) 
+	(automovel-disponivel (classe mini) (marcamodelo smart)
 	(km-percorridos 854123) (matricula 12-AB-34))
-	(automovel-disponivel (classe suv) (marcamodelo hyundaikona) 
+	(automovel-disponivel (classe suv) (marcamodelo hyundaikona)
 	(km-percorridos 854123) (matricula 89-TY-36))
-	
 )
 
 ; verifica se a reserva pode ser levantada, isto e, se o cliente nao tem outra reserva
@@ -133,6 +130,73 @@
     (retract ?reserva-nao-cliente) ; cliente deixa de ser nao cliente
 )
 
+;afeta um carro cujo pedido inclui marca e modelo
+(defrule afeta-carro-reserva-modelo
+
+    (exists (associa-carro-res ?numpedido))
+    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil) )  ) )
+    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
+
+	?associa-carro <- (associa-carro-res ?numpedido)
+    ?reserva-ativada <- (reserva-ativada ?numpedido)
+	?pedidos-reserva <- (pedido-reserva
+		(id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil)) )
+	?carro-disponivel <- (automovel-disponivel
+		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+		(km-percorridos ?km-percorridos) )
+	=>
+
+	(assert (pedido-ativo ?numpedido ?matricula))
+	(assert (automovel-indisponivel
+		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+		(km-percorridos ?km-percorridos) ))
+	(retract ?carro-disponivel)
+    (retract ?associa-carro)
+    (retract ?reserva-ativada)
+	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+)
+
+;afeta um carro cujo pedido nao inclui modelo
+(defrule afeta-carro-reserva
+
+    (exists (associa-carro-res ?numpedido))
+    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(eq ?modelo nil) )  ) )
+    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
+
+	?associa-carro <- (associa-carro-res ?numpedido)
+    ?reserva-ativada <- (reserva-ativada ?numpedido)
+	?pedidos-reserva <- (pedido-reserva
+		(id-reserva ?numpedido) (classe ?classe)
+		(modelo ?modelo&:(eq ?modelo nil)) ) ;exclui caso em que o modelo eh especificado
+	?carro-disponivel <- (automovel-disponivel
+		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+		(km-percorridos ?km-percorridos) )
+
+    =>
+	(assert (pedido-ativo ?numpedido ?matricula))
+	(assert (automovel-indisponivel
+		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+		(km-percorridos ?km-percorridos) ))
+	(retract ?carro-disponivel)
+    (retract ?associa-carro)
+    (retract ?reserva-ativada)
+	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+)
+
+; no inicio de cada dia os carros sao levados para aluguer
+(defrule inicio-dia
+    (dia-corrente ?dia ?mes ?ano)
+    ?reserva <- (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
+                (data-levantamento ?dia ?mes ?ano))
+    ?reserva-com-carro <- (pedido-ativo ?numpedido ?matricula)
+    =>
+    (printout t "Reserva " ?numpedido ": " ?matricula crlf)
+)
+
+;;;;;;;;;;;;;
+;; FUNCOES ;;
+;;;;;;;;;;;;;
+
 ; insere um novo pedido de reserva com o numero ?numpedido
 (deffunction pedido-reserva (?numpedido)
     (assert (reserva-ativada ?numpedido))
@@ -143,57 +207,36 @@
 	(assert (associa-carro-res ?numpedido))
 )
 
+; inicia um novo dia
+(deffunction aluga-carros ()
+    (printout t "Indique qual o dia/mes/ano que se inicia (dd/mm/aaaa): ")
+    (bind ?date (read))
 
-;afeta um carro cujo pedido inclui marca e modelo
-(defrule afeta-carro-reserva-modelo 
+    (bind ?day-seperator (str-index "/" ?date))
 
-    (exists (associa-carro-res ?numpedido))
-    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil) )  ) )
-    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
+    (bind ?month-seperator
+        (str-index "/"
+            (sub-string (+ ?day-seperator 1) (str-length ?date) ?date ))
+    )
 
-	?associa-carro <- (associa-carro-res ?numpedido)
-    ?reserva-ativada <- (reserva-ativada ?numpedido)
-	?pedidos-reserva <- (pedido-reserva 
-		(id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil)) )
-	?carro-disponivel <- (automovel-disponivel
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
-		(km-percorridos ?km-percorridos) )
-	=>
-	
-	(assert (pedido-ativo ?numpedido ?matricula))
-	(assert (automovel-indisponivel 
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
-		(km-percorridos ?km-percorridos) ))
-	(retract ?carro-disponivel)
-    (retract ?associa-carro)
-    (retract ?reserva-ativada)
-	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
-)
+    (bind ?day
+        (sub-string 1 (- ?day-seperator 1) ?date )
+    )
 
-;afeta um carro cujo pedido nao inclui modelo
-;
-(defrule afeta-carro-reserva 
+    (bind ?month
+        (sub-string
+            (+ ?day-seperator 1)
+            (- (+ ?day-seperator ?month-seperator) 1)
+            ?date)
+    )
 
-    (exists (associa-carro-res ?numpedido))
-    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(eq ?modelo nil) )  ) )
-    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
+    (bind ?year
+        (sub-string
+            (+ (+ ?day-seperator ?month-seperator) 1)
+            (str-length ?date)
+            ?date)
+    )
 
-	?associa-carro <- (associa-carro-res ?numpedido)
-    ?reserva-ativada <- (reserva-ativada ?numpedido)
-	?pedidos-reserva <- (pedido-reserva 
-		(id-reserva ?numpedido) (classe ?classe) 
-		(modelo ?modelo&:(eq ?modelo nil)) ) ;exclui caso em que o modelo eh especificado
-	?carro-disponivel <- (automovel-disponivel
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
-		(km-percorridos ?km-percorridos) )
-    
-    =>	
-	(assert (pedido-ativo ?numpedido ?matricula))
-	(assert (automovel-indisponivel 
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) 
-		(km-percorridos ?km-percorridos) ))
-	(retract ?carro-disponivel)
-    (retract ?associa-carro)
-    (retract ?reserva-ativada)
-	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+    (assert (dia-corrente (string-to-field ?day) (string-to-field ?month) (string-to-field ?year)))
+    (printout t "Foram levantadas as seguintes encomendas:" crlf)
 )
