@@ -54,8 +54,14 @@
 
 (deftemplate recepcao-automovel
     (slot id-reserva)
-    (slot cliente-pagou)
-    (slot ha-danos)
+    (slot cliente-pagou
+        (type SYMBOL)
+        (allowed-symbols sim nao)
+        (default nao))
+    (slot ha-danos
+        (type SYMBOL)
+        (allowed-symbols sim nao)
+        (default nao))
 )
 
 (deffacts pedidos-reserva
@@ -81,6 +87,12 @@
 	(km-percorridos 854123) (matricula 89-TY-36))
 )
 
+;;;;;;;;;;;;
+;; REGRAS ;;
+;;;;;;;;;;;;
+
+; Regras relacionadas com as reservas
+
 ; verifica se a reserva pode ser levantada, isto e, se o cliente nao tem outra reserva
 ; a decorrer
 (defrule verifica-reserva-data
@@ -92,7 +104,7 @@
 
     =>
     (retract ?nova-reserva)
-    (printout t "Reserva nao ativada." crlf "Ja existe uma reserva em curso feita por este cliente." crlf)
+    (printout t "Reserva " ?num "nao ativada." crlf "Ja existe uma reserva em curso feita por este cliente." crlf)
 )
 
 ; verifica se o cliente que esta a efetuar a nova reserva esta na lista negra
@@ -104,7 +116,7 @@
 
     =>
     (retract ?nova-reserva)
-    (printout t "Reserva nao ativada." crlf "Cliente " ?id-c " esta na lista negra." crlf)
+    (printout t "Reserva " ?num " nao ativada." crlf "Cliente " ?id-c " esta na lista negra." crlf)
 )
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
@@ -130,6 +142,7 @@
     (retract ?reserva-nao-cliente) ; cliente deixa de ser nao cliente
 )
 
+; Regras relacionadas com associacao de carros a reservas
 ;afeta um carro cujo pedido inclui marca e modelo
 (defrule afeta-carro-reserva-modelo
 
@@ -146,7 +159,7 @@
 		(km-percorridos ?km-percorridos) )
 	=>
 
-	(assert (pedido-ativo ?numpedido ?matricula))
+	(assert (reserva-com-carro ?numpedido ?matricula))
 	(assert (automovel-indisponivel
 		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
 		(km-percorridos ?km-percorridos) ))
@@ -173,7 +186,7 @@
 		(km-percorridos ?km-percorridos) )
 
     =>
-	(assert (pedido-ativo ?numpedido ?matricula))
+	(assert (reserva-com-carro ?numpedido ?matricula))
 	(assert (automovel-indisponivel
 		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
 		(km-percorridos ?km-percorridos) ))
@@ -183,14 +196,81 @@
 	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
 )
 
+; Regras relacionadas com o inicio de um novo dia
 ; no inicio de cada dia os carros sao levados para aluguer
 (defrule inicio-dia
     (dia-corrente ?dia ?mes ?ano)
     ?reserva <- (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
                 (data-levantamento ?dia ?mes ?ano))
-    ?reserva-com-carro <- (pedido-ativo ?numpedido ?matricula)
+    ?reserva-com-carro <- (reserva-com-carro ?numpedido ?matricula)
     =>
     (printout t "Reserva " ?numpedido ": " ?matricula crlf)
+)
+
+; Regras recepcao de carros
+; Recebe um carro em que existiu pagamento mas veio com danos
+(defrule recebe-carro-com-danos
+    (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq ?pagou sim))
+        (ha-danos ?danos&:(eq ?danos sim)))
+    (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c))
+    (reserva-com-carro ?numpedido ?matricula)
+    ?automovel <- (automovel-indisponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula))
+    =>
+    (assert (lista-negra ?id-c))
+    (assert (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula)))
+    (retract ?automovel)
+    (printout t "O carro " ?matricula " foi recebido com danos." crlf)
+    (printout t "O cliente " ?id-c " foi adicionado a lista negra." crlf)
+)
+
+; Recebe um carro sem danos, mas sem pagamento
+(defrule recebe-carro-sem-pagamento
+    (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq ?pagou nao))
+        (ha-danos ?danos&:(eq ?danos nao)))
+    (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c))
+    (reserva-com-carro ?numpedido ?matricula)
+    ?automovel <- (automovel-indisponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula))
+    =>
+    (assert (lista-negra ?id-c))
+    (assert (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula)))
+    (retract ?automovel)
+    (printout t "O carro " ?matricula " foi recebido, mas o pagamento nao foi efetuado." crlf)
+    (printout t "O cliente " ?id-c " foi adicionado a lista negra.")
+)
+
+; Recebe um carro com danos e sem pagamento
+(defrule recebe-carro-sem-pagamento-com-danos
+    (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq ?pagou nao))
+        (ha-danos ?danos&:(eq ?danos sim)))
+    (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c))
+    (reserva-com-carro ?numpedido ?matricula)
+    ?automovel <- (automovel-indisponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula))
+    =>
+    (assert (lista-negra ?id-c))
+    (assert (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula)))
+    (retract ?automovel)
+    (printout t "O carro " ?matricula " foi recebido com danos e o pagamento nao foi efetuado." crlf)
+    (printout t "O cliente " ?id-c " foi adicionado a lista negra." crlf)
+)
+
+; Recebe um carro sem danos e com pagamento
+(defrule recebe-carro-sucesso
+    (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq ?pagou sim))
+        (ha-danos ?danos&:(eq ?danos nao)))
+    (reserva-com-carro ?numpedido ?matricula)
+    ?automovel <- (automovel-indisponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula))
+    =>
+    (assert (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo)
+        (matricula ?matricula)))
+    (retract ?automovel)
+    (printout t "O carro " ?matricula " foi recebido com sucesso." crlf)
 )
 
 ;;;;;;;;;;;;;
@@ -239,4 +319,16 @@
 
     (assert (dia-corrente (string-to-field ?day) (string-to-field ?month) (string-to-field ?year)))
     (printout t "Foram levantadas as seguintes encomendas:" crlf)
+)
+
+; recepcao de um automovel previamente alugado
+(deffunction recebe-carro (?numpedido)
+    (printout t "O carro tem danos? (sim / nao)" crlf)
+    (bind ?danos (read))
+
+    (printout t "O pagamento foi efetuado? (sim / nao)" crlf)
+    (bind ?pagou (read))
+
+    (assert (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou)
+        (ha-danos ?danos)))
 )
