@@ -196,6 +196,37 @@
 	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
 )
 
+
+;afeta um carro cujo modelo e classe estao especificados na reserva
+; mas tal nao esta disponivel no momento da reserva, portanto e afetado um carro aleatorio da mesma classe
+
+(defrule afeta-carro-aleatorio-indisp
+
+    (exists (associa-carro-res ?numpedido))
+    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) ) )
+    (exists (automovel-disponivel (classe ?classe) (marcamodelo ~?marcamodelo) (matricula ~?matricula) (km-percorridos ~?km-percorridos) ) )
+    
+
+    ?associa-carro <- (associa-carro-res ?numpedido)
+    ?reserva-ativada <- (reserva-ativada ?numpedido)
+    ?pedidos-reserva <- (pedido-reserva
+        (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) )
+    ?carro-disponivel <- (automovel-disponivel
+        (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+        (km-percorridos ?km-percorridos) )
+
+    =>
+    (assert (reserva-com-carro ?numpedido ?matricula))
+    (assert (automovel-indisponivel
+        (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+        (km-percorridos ?km-percorridos) ))
+    (retract ?carro-disponivel)
+    (retract ?associa-carro)
+    (retract ?reserva-ativada)
+    (printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+
+)
+
 ; Regras relacionadas com o inicio de um novo dia
 ; no inicio de cada dia os carros sao levados para aluguer
 (defrule inicio-dia
