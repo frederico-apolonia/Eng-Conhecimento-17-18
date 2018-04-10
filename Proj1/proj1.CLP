@@ -70,7 +70,7 @@
     (classe mini) (modelo smart))
     (pedido-reserva (id-reserva 22) (id-cliente 1)
     (data-levantamento 15 1 2018) (data-devolucao 20 1 2018)
-    (classe mini) (modelo smart))
+    (classe suv) (modelo smart))
 
     (pedidos-reserva-nao-cliente (id-reserva 23)
     (data-levantamento 1 1 2018) (data-devolucao 15 1 2018)
@@ -146,54 +146,56 @@
 ;afeta um carro cujo pedido inclui marca e modelo
 (defrule afeta-carro-reserva-modelo
 
-    (exists (associa-carro-res ?numpedido))
-    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil) )  ) )
-    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
-
-	?associa-carro <- (associa-carro-res ?numpedido)
+    ?associa-carro <- (associa-carro-res ?numpedido)
+    
+    ?pedidos-reserva <- (pedido-reserva
+        (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) )
+       
+    ?carro-disponivel <- (automovel-disponivel
+        (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+        (km-percorridos ?km-percorridos) )
+    
     ?reserva-ativada <- (reserva-ativada ?numpedido)
-	?pedidos-reserva <- (pedido-reserva
-		(id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(neq ?modelo nil)) )
-	?carro-disponivel <- (automovel-disponivel
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
-		(km-percorridos ?km-percorridos) )
-	=>
+       
 
-	(assert (reserva-com-carro ?numpedido ?matricula))
-	(assert (automovel-indisponivel
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
-		(km-percorridos ?km-percorridos) ))
-	(retract ?carro-disponivel)
+    =>
+    (assert (reserva-com-carro ?numpedido ?matricula))
+    (assert (automovel-indisponivel
+        (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+        (km-percorridos ?km-percorridos) ))
+    (retract ?carro-disponivel)
     (retract ?associa-carro)
     (retract ?reserva-ativada)
-	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+    (printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+
+    
 )
 
 ;afeta um carro cujo pedido nao inclui modelo
 (defrule afeta-carro-reserva
 
-    (exists (associa-carro-res ?numpedido))
-    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(eq ?modelo nil) )  ) )
-    (exists (automovel-disponivel (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula) (km-percorridos ?km-percorridos) ) )
-
-	?associa-carro <- (associa-carro-res ?numpedido)
+    ?associa-carro <- (associa-carro-res ?numpedido)
+    
+    ?pedidos-reserva <- (pedido-reserva
+        (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(eq ?modelo nil) ) )
+       
+    ?carro-disponivel <- (automovel-disponivel
+        (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+        (km-percorridos ?km-percorridos) )
+    
     ?reserva-ativada <- (reserva-ativada ?numpedido)
-	?pedidos-reserva <- (pedido-reserva
-		(id-reserva ?numpedido) (classe ?classe)
-		(modelo ?modelo&:(eq ?modelo nil)) ) ;exclui caso em que o modelo eh especificado
-	?carro-disponivel <- (automovel-disponivel
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
-		(km-percorridos ?km-percorridos) )
+       
 
     =>
-	(assert (reserva-com-carro ?numpedido ?matricula))
-	(assert (automovel-indisponivel
-		(classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
-		(km-percorridos ?km-percorridos) ))
-	(retract ?carro-disponivel)
+    (assert (reserva-com-carro ?numpedido ?matricula))
+    (assert (automovel-indisponivel
+        (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
+        (km-percorridos ?km-percorridos) ))
+    (retract ?carro-disponivel)
     (retract ?associa-carro)
     (retract ?reserva-ativada)
-	(printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+    (printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
+
 )
 
 
@@ -202,18 +204,20 @@
 
 (defrule afeta-carro-aleatorio-indisp
 
-    (exists (associa-carro-res ?numpedido))
-    (exists (pedido-reserva (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) ) )
-    (exists (automovel-disponivel (classe ?classe) (marcamodelo ~?marcamodelo) (matricula ~?matricula) (km-percorridos ~?km-percorridos) ) )
-    
-
     ?associa-carro <- (associa-carro-res ?numpedido)
-    ?reserva-ativada <- (reserva-ativada ?numpedido)
+    
     ?pedidos-reserva <- (pedido-reserva
         (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) )
+    
+    (not (automovel-disponivel (classe ?classe) (marcamodelo ?modelo) ) )
+    
     ?carro-disponivel <- (automovel-disponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) )
+    
+   
+    ?reserva-ativada <- (reserva-ativada ?numpedido)
+       
 
     =>
     (assert (reserva-com-carro ?numpedido ?matricula))
