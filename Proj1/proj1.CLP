@@ -147,16 +147,16 @@
 (defrule afeta-carro-reserva-modelo
 
     ?associa-carro <- (associa-carro-res ?numpedido)
-    
+
     ?pedidos-reserva <- (pedido-reserva
         (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) )
-       
+
     ?carro-disponivel <- (automovel-disponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) )
-    
+
     ?reserva-ativada <- (reserva-ativada ?numpedido)
-       
+
 
     =>
     (assert (reserva-com-carro ?numpedido ?matricula))
@@ -168,23 +168,23 @@
     (retract ?reserva-ativada)
     (printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
 
-    
+
 )
 
 ;afeta um carro cujo pedido nao inclui modelo
 (defrule afeta-carro-reserva
 
     ?associa-carro <- (associa-carro-res ?numpedido)
-    
+
     ?pedidos-reserva <- (pedido-reserva
         (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo&:(eq ?modelo nil) ) )
-       
+
     ?carro-disponivel <- (automovel-disponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) )
-    
+
     ?reserva-ativada <- (reserva-ativada ?numpedido)
-       
+
 
     =>
     (assert (reserva-com-carro ?numpedido ?matricula))
@@ -205,19 +205,19 @@
 (defrule afeta-carro-aleatorio-indisp
 
     ?associa-carro <- (associa-carro-res ?numpedido)
-    
+
     ?pedidos-reserva <- (pedido-reserva
         (id-reserva ?numpedido) (classe ?classe) (modelo ?modelo) )
-    
+
     (not (automovel-disponivel (classe ?classe) (marcamodelo ?modelo) ) )
-    
+
     ?carro-disponivel <- (automovel-disponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) )
-    
-   
+
+
     ?reserva-ativada <- (reserva-ativada ?numpedido)
-       
+
 
     =>
     (assert (reserva-com-carro ?numpedido ?matricula))
@@ -315,11 +315,13 @@
 ; insere um novo pedido de reserva com o numero ?numpedido
 (deffunction pedido-reserva (?numpedido)
     (assert (reserva-ativada ?numpedido))
+    (run)
 )
 
 ;afeta um carro
 (deffunction afecta-carro (?numpedido)
 	(assert (associa-carro-res ?numpedido))
+    (run)
 )
 
 ; inicia um novo dia
@@ -354,6 +356,7 @@
 
     (assert (dia-corrente (string-to-field ?day) (string-to-field ?month) (string-to-field ?year)))
     (printout t "Foram levantadas as seguintes encomendas:" crlf)
+    (run)
 )
 
 ; recepcao de um automovel previamente alugado
@@ -366,4 +369,15 @@
 
     (assert (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou)
         (ha-danos ?danos)))
+    (run)
+)
+
+; guarda os factos num ficheiro
+(deffunction guarda-factos (?filename)
+    (save-facts ?filename)
+)
+
+; carrega os factos de um ficheiro
+(deffunction carrega-factos (?filename)
+    (load-facts ?filename)
 )
