@@ -119,8 +119,27 @@
     (printout t "Reserva " ?num " nao ativada." crlf "Cliente " ?id-c " esta na lista negra." crlf)
 )
 
-; verifica se cliente tem mais de 25 anos e carta com mais de 1 ano
-; nao pode efetuar reserva
+;regra que testa se um cliente é válido
+;ou seja, se tem mais de 25 anos e se
+;tem carta de condução há mais de 1 ano
+	
+(defrule cliente-valido
+?nova-reserva <- (reserva-ativada ?num)
+(pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
+(pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?d ?m ?a))
+(cliente (id-cliente ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+?anos-cliente <- (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25)
+?anos-carta <- (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1)
+(test (and (>= ?anos-cliente 25) (>= ?anos-carta 1))) 
+(test (or (or (>= ?d1 ?d) (>= ?m1 ?m)) (>= a1 ?a)))
+	
+=>
+	
+(retract ?nova-reserva)
+(assert (reserva-valida ?num))
+(printout t "Reserva ativada valida: " ? crlf)
+)
+	
 
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
