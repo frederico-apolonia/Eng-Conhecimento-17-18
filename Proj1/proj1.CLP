@@ -160,58 +160,70 @@
 ;ou seja, se tem mais de 25 anos e se
 ;tem carta de condução há mais de 1 ano
 (defrule cliente-valido-primeira-reserva
-?nova-reserva <- (reserva-ativada ?num)
-(pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
-(cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
-(test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
-(>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
+    (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+    ; teste para verificar se tem mais de 25 anos e se tem a carta ha mais de 1 ano
+    (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
+    (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
 
-; TODO fazer a condicao de 30 dias
+    ; TODO fazer a condicao de 30 dias
 =>
-(retract ?nova-reserva)
-(assert (reserva-valida ?num))
-(printout t "O pedido de reserva " ?num " foi aceite." crlf)
+    (retract ?nova-reserva)
+    (assert (reserva-valida ?num))
+    (printout t "O pedido de reserva " ?num " foi aceite." crlf)
 )
 
 ;regra que testa se um cliente é válido de acordo com reservas já feitas
 (defrule cliente-valido-mais-reservas
-?nova-reserva <- (reserva-ativada ?num)
-(pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
-(pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?d ?m ?a))
-(cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
-(test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
-(>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
-(test (or (or (>= ?dl ?d) (>= ?ml ?m)) (>= ?al ?a)))
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
+    (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?dd ?md ?ad))
+    (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+    ; teste para verificar se tem mais de 25 anos e se tem a carta ha mais de 1 ano
+    (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
+    (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+    ; teste para verificar se tem outra reserva em curso
+    (test (or (or (>= ?dl ?dd) (>= ?ml ?md)) (>= ?al ?ad)))
 
-; TODO fazer a condicao de 30 dias
+    ; TODO fazer a condicao de 30 dias
 =>
-(retract ?nova-reserva)
-(assert (reserva-valida ?num))
-(printout t "O pedido de reserva " ?num " foi aceite." crlf)
+    (retract ?nova-reserva)
+    (assert (reserva-valida ?num))
+    (printout t "O pedido de reserva " ?num " foi aceite." crlf)
 )
 
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
-; cliente nao registado)
+; cliente nao registado) e se esta reserva ativada é válida
 ; se for, cria um novo cliente com os dados
 (defrule verifica-reserva-nao-cliente
     (reserva-ativada ?num)
     ?reserva-nao-cliente <- (pedidos-reserva-nao-cliente
-        (id-reserva ?num) (data-levantamento $?data-lev) (data-devolucao $?data-dev)
+        (id-reserva ?num) (data-levantamento ?dl ?ml ?al) (data-devolucao $?data-dev)
         (classe ?classe) (modelo ?modelo)
         (nome $?nome)
-        (data-nascimento $?data-nasc) (data-carta $?data-carta)
+        (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac)
         (data-validade-carta $?data-val-carta-cond) )
+
+        (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
+        (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+
+        ; TODO regra dos 30 dias
+
     =>
-    (bind ?id-novo-c (random 1111111 9999999))
+    (bind ?id-novo-c (random 1000000 9999999))
 
     (assert (cliente (id ?id-novo-c) (name ?nome)
-            (data-nascimento ?data-nasc) (data-carta ?data-carta)
+            (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac)
             (data-validade-carta ?data-val-carta-cond) ))
     (assert (pedido-reserva (id-reserva ?num) (id-cliente ?id-novo-c)
-            (data-levantamento ?data-lev) (data-devolucao ?data-dev)
+            (data-levantamento ?dl ?ml ?al) (data-devolucao ?data-dev)
             (classe ?classe) (modelo ?modelo) ))
     (retract ?reserva-nao-cliente) ; cliente deixa de ser nao cliente
+
+    (printout t "O pedido de reserva " ?num " foi aceite." crlf)
+    (printout t "Foi criado um novo cliente com o numero " ?id-novo-c crlf)
 )
 
 ; Regras relacionadas com associacao de carros a reservas
