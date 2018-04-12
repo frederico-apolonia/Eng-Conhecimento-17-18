@@ -64,12 +64,17 @@
         (default nao))
 )
 
+(deffacts clientes
+    (cliente (id 1) (name Renato Maudim) (data-nascimento 26 06 1986)
+    (data-carta 12 5 2005) (data-validade-carta 12 5 2050))
+)
+
 (deffacts pedidos-reserva
     (pedido-reserva (id-reserva 21) (id-cliente 1)
     (data-levantamento 1 1 2018) (data-devolucao 16 1 2018)
     (classe mini) (modelo smart))
     (pedido-reserva (id-reserva 22) (id-cliente 1)
-    (data-levantamento 15 1 2018) (data-devolucao 20 1 2018)
+    (data-levantamento 17 1 2018) (data-devolucao 20 1 2018)
     (classe suv) (modelo smart))
 
     (pedidos-reserva-nao-cliente (id-reserva 23)
@@ -86,6 +91,38 @@
 	(automovel-disponivel (classe suv) (marcamodelo hyundaikona)
 	(km-percorridos 854123) (matricula 89-TY-36))
 )
+
+(deffunction calcula-anos (?d ?m ?a ?d1 ?m1 ?a1 ?idademinima)
+
+    (if (>= (- ?a ?a1) ?idademinima)
+        then
+        (if (eq (- ?a ?a1) ?idademinima)
+            then
+            (if (< (- ?m ?m1) 0)
+                then
+                (return ?idademinima)
+                else
+                (if (eq 0 (- ?m ?m1))
+                    then
+                    (if (> 0 (- ?a ?a1))
+                        then
+                        (return ?idademinima)
+                        else
+                        (return (- ?idademinima 1))
+                    )
+                    else
+                    (return (- ?idademinima 1))
+                )
+            )
+            else
+            (return (- ?a ?a1))
+        )
+        else
+        (return (- ?a ?a1))
+    )
+
+)
+
 
 ;;;;;;;;;;;;
 ;; REGRAS ;;
@@ -122,24 +159,36 @@
 ;regra que testa se um cliente é válido
 ;ou seja, se tem mais de 25 anos e se
 ;tem carta de condução há mais de 1 ano
-	
-(defrule cliente-valido
+(defrule cliente-valido-primeira-reserva
+?nova-reserva <- (reserva-ativada ?num)
+(pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
+(cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+(test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
+(>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+
+; TODO fazer a condicao de 30 dias
+=>
+(retract ?nova-reserva)
+(assert (reserva-valida ?num))
+(printout t "O pedido de reserva " ?num " foi aceite." crlf)
+)
+
+;regra que testa se um cliente é válido de acordo com reservas já feitas
+(defrule cliente-valido-mais-reservas
 ?nova-reserva <- (reserva-ativada ?num)
 (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
 (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c) (data-devolucao ?d ?m ?a))
-(cliente (id-cliente ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
-?anos-cliente <- (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25)
-?anos-carta <- (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1)
-(test (and (>= ?anos-cliente 25) (>= ?anos-carta 1))) 
-(test (or (or (>= ?d1 ?d) (>= ?m1 ?m)) (>= a1 ?a)))
-	
+(cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+(test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
+(>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+(test (or (or (>= ?dl ?d) (>= ?ml ?m)) (>= ?al ?a)))
+
+; TODO fazer a condicao de 30 dias
 =>
-	
 (retract ?nova-reserva)
 (assert (reserva-valida ?num))
-(printout t "Reserva ativada valida: " ? crlf)
+(printout t "O pedido de reserva " ?num " foi aceite." crlf)
 )
-	
 
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
@@ -403,35 +452,4 @@
 ; carrega os factos de um ficheiro
 (deffunction carrega-factos (?filename)
     (load-facts ?filename)
-)
-
-(deffunction calcula-anos (?d ?m ?a ?d1 ?m1 ?a1 ?idademinima)
-
-    (if (>= (- ?a ?a1) ?idademinima)
-        then
-        (if (eq (- ?a ?a1) ?idademinima)
-            then
-            (if (< (- ?m ?m1) 0)
-                then
-                (return ?idademinima)
-                else
-                (if (eq 0 (- ?m ?m1))
-                    then
-                    (if (> 0 (- ?a ?a1))
-                        then
-                        (return ?idademinima)
-                        else
-                        (return (- ?idademinima 1))
-                    )
-                    else
-                    (return (- ?idademinima 1))
-                )
-            )
-            else
-            (return (- ?a ?a1))
-        )
-        else
-        (return (- ?a ?a1))
-    )
-
 )
