@@ -121,25 +121,6 @@
 
 ; verifica se cliente tem mais de 25 anos e carta com mais de 1 ano
 ; nao pode efetuar reserva
-(defrule cliente-valido
-	?nova-reserva <- (reserva-ativada ?num)
-	(pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento ?dl ?ml ?al))
-	(cliente (id-reserva ?id_c) (data-nascimento ?dc ?mc ?ma) (data-carta ?dd ?md ?ad))
-	(test (not (or (or (> (- ?al ?ma) 25) (& (& (eq (- ?al ?ma) 25) (eq ?mc ?ml)) (>= ?dc ?dl))))))
-	(test (not (or (> (- ?al ?ad) 1) (&(& (> ?al ?ad) (>= ?ml ?md))(>= ?dl ?dd)))))
-	
-	
-	=>
-	(retract ?nova-reserva)
-	(printout t "Cliente invalido: " ?id-c crlf)
-	)
-
-
-
-
-
-
-
 
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
@@ -403,4 +384,35 @@
 ; carrega os factos de um ficheiro
 (deffunction carrega-factos (?filename)
     (load-facts ?filename)
+)
+
+(deffunction calcula-anos (?d ?m ?a ?d1 ?m1 ?a1 ?idademinima)
+
+    (if (>= (- ?a ?a1) ?idademinima)
+        then
+        (if (eq (- ?a ?a1) ?idademinima)
+            then
+            (if (< (- ?m ?m1) 0)
+                then
+                (return ?idademinima)
+                else
+                (if (eq 0 (- ?m ?m1))
+                    then
+                    (if (> 0 (- ?a ?a1))
+                        then
+                        (return ?idademinima)
+                        else
+                        (return (- ?idademinima 1))
+                    )
+                    else
+                    (return (- ?idademinima 1))
+                )
+            )
+            else
+            (return (- ?a ?a1))
+        )
+        else
+        (return (- ?a ?a1))
+    )
+
 )
