@@ -17,7 +17,7 @@
     (data-levantamento 1 1 2018) (data-devolucao 16 1 2018)
     (classe mini) (modelo smart))
     (pedido-reserva (id-reserva 22) (id-cliente 1111111)
-    (data-levantamento 17 1 2018) (data-devolucao 20 1 2018)
+    (data-levantamento 13 1 2018) (data-devolucao 20 1 2018)
     (classe suv) (modelo smart))
     (pedido-reserva (id-reserva 24) (id-cliente 5555555)
     (data-levantamento 19 3 2018) (data-devolucao 30 4 2018) )
@@ -29,5 +29,5 @@
 )
 
 (deffacts recepcao-carros
-    (assert (recepcao-automovel (id-reserva 21) (cliente-pagou sim) (ha-danos nao)))
+    (recepcao-automovel (id-reserva 21) (cliente-pagou sim) (ha-danos nao))
 )

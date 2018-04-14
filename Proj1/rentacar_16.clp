@@ -73,6 +73,100 @@
 	(km-percorridos 854123) (matricula 89-TY-36))
 )
 
+; calcula o numero de dias desde um ano ate outro
+; ano1 < ano2
+(deffunction soma-anos-em-dias (?ano1 ?ano2)
+    (bind ?result 0)
+    (loop-for-count (?ano ?ano1 ?ano2) do
+        (if (eq (mod ?ano 4) 0)
+            then (bind ?result (+ ?result 366))
+            else (bind ?result (+ ?result 365))
+        )
+    )
+    (return ?result)
+)
+
+; calcula os dias passados desde 1 1 2010
+(deffunction data-em-dias (?dia ?mes ?ano)
+    ; dias ja passados de um ano no mes de...
+    (bind ?bissexto <- (eq (mod ?ano 4) 0))
+
+    (if (eq (- ?mes 1) 0)  then (bind ?dias-mes 0))   ; janeiro
+    (if (eq (- ?mes 1) 1)  then (bind ?dias-mes 31))  ; fevereiro
+    (if (eq (- ?mes 1) 2)  then                       ; março
+        (if ?bissexto ; ano bissexto
+            then (bind ?dias-mes 60)
+            else (bind ?dias-mes 59)))
+    (if (eq (- ?mes 1) 3)  then                       ; abril
+        (if ?bissexto
+            then (bind ?dias-mes 91)
+            else (bind ?dias-mes 90)))
+    (if (eq (- ?mes 1) 4)  then
+        (if ?bissexto
+            then (bind ?dias-mes 121)
+            else (bind ?dias-mes 120)))               ; maio
+    (if (eq (- ?mes 1) 5)  then
+        (if ?bissexto
+            then (bind ?dias-mes 152)
+            else (bind ?dias-mes 151)))               ; junho
+    (if (eq (- ?mes 1) 6)  then
+        (if ?bissexto
+            then (bind ?dias-mes 182)
+            else (bind ?dias-mes 181)))               ; julho
+    (if (eq (- ?mes 1) 7)  then
+        (if ?bissexto
+            then (bind ?dias-mes 213)
+            else (bind ?dias-mes 212)))               ; agosto
+    (if (eq (- ?mes 1) 8)  then
+        (if ?bissexto
+            then (bind ?dias-mes 244)
+            else (bind ?dias-mes 243)))               ; setembro
+    (if (eq (- ?mes 1) 9)  then
+        (if ?bissexto
+            then (bind ?dias-mes 274)
+            else (bind ?dias-mes 273)))               ; outubro
+    (if (eq (- ?mes 1) 10) then
+        (if ?bissexto
+            then (bind ?dias-mes 306)
+            else (bind ?dias-mes 305)))               ; novembro
+    (if (eq (- ?mes 1) 11) then
+        (if ?bissexto
+            then (bind ?dias-mes 336)
+            else (bind ?dias-mes 335)))               ; dezembro
+
+    (return (+ ?dia ?dias-mes (soma-anos-em-dias 2010 (- ?ano 1))))
+)
+
+; calcula a idade em anos
+(deffunction calcula-anos (?d ?m ?a ?d1 ?m1 ?a1 ?idademinima)
+    (if (>= (- ?a ?a1) ?idademinima)
+        then
+        (if (eq (- ?a ?a1) ?idademinima)
+            then
+            (if (< (- ?m ?m1) 0)
+                then
+                (return ?idademinima)
+                else
+                (if (eq 0 (- ?m ?m1))
+                    then
+                    (if (> 0 (- ?a ?a1))
+                        then
+                        (return ?idademinima)
+                        else
+                        (return (- ?idademinima 1))
+                    )
+                    else
+                    (return (- ?idademinima 1))
+                )
+            )
+            else
+            (return (- ?a ?a1))
+        )
+        else
+        (return (- ?a ?a1))
+    )
+)
+
 (deffunction start ()
     (printout t "Loading factos-grupo16.clp" crlf)
     (load factos-grupo16.clp)
@@ -127,8 +221,7 @@
 
     =>
     (retract ?nova-reserva)
-    (printout t "Reserva " ?num "nao ativada." crlf "Ja existe uma reserva
-    em curso feita por este cliente." crlf)
+    (printout t "Reserva " ?num " nao ativada." crlf "Ja existe uma reserva em curso feita por este cliente." crlf)
 )
 
 ; verifica se o cliente que esta a efetuar a nova reserva esta na lista negra
@@ -148,11 +241,10 @@
 (defrule cliente-primeira-reserva
     ?nova-reserva <- (reserva-ativada ?num)
     (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento
-        ?dl ?ml ?al))
+        ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad))
     (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
         ?ac))
-
-    ; TODO fazer a condicao de 30 dias
+    (test (<= (abs (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al))) 30))
 =>
     (retract ?nova-reserva)
     (assert (reserva-valida ?num))
@@ -163,13 +255,16 @@
 (defrule cliente-valido-mais-reservas
     ?nova-reserva <- (reserva-ativada ?num)
     (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento
-        ?dl ?ml ?al))
+        ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad))
     (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c)
-    (data-devolucao ?dd ?md ?ad))
+    (data-devolucao ?dd1 ?md1 ?ad1))
     (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
         ?ac))
 
-    ; TODO fazer a condicao de 30 dias
+    ; teste para verificar se tem outra reserva em curso
+    (test (or (or (>= ?dl ?dd1) (>= ?ml ?md1)) (>= ?al ?ad1)))
+
+    (test (<= (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al)) 30))
 =>
     (retract ?nova-reserva)
     (assert (reserva-valida ?num))
@@ -202,6 +297,32 @@
     (printout t "Motivo: Nao cliente tem menos de 1 ano de carta" crlf)
 )
 
+;regra que testa se um nãocliente tem uma reserva superior a 30 dias
+(defrule nao-cliente-mais-30-dias
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedidos-reserva-nao-cliente (id-reserva ?num) (data-levantamento
+        ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad))
+
+    (test (> (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al)) 30))
+=>
+    (retract ?nova-reserva)
+    (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
+    (printout t "Motivo: Reserva com mais de 30 dias" crlf)
+)
+
+;regra que testa se um nãocliente tem uma reserva superior a 30 dias
+(defrule cliente-mais-30-dias
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva (id-reserva ?num) (data-levantamento
+        ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad))
+
+    (test (> (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al)) 30))
+=>
+    (retract ?nova-reserva)
+    (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
+    (printout t "Motivo: Reserva com mais de 30 dias" crlf)
+)
+
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
 ; cliente nao registado) e se esta reserva ativada é válida
 ; se for, cria um novo cliente com os dados
@@ -209,7 +330,7 @@
     (reserva-ativada ?num)
     ?reserva-nao-cliente <- (pedidos-reserva-nao-cliente
         (id-reserva ?num) (data-levantamento ?dl ?ml ?al) (data-devolucao
-            $?data-dev)
+            ?dd ?md ?ad)
         (classe ?classe) (modelo ?modelo)
         (nome $?nome)
         (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac)
@@ -218,7 +339,7 @@
         (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
         (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
 
-        ; TODO regra dos 30 dias
+        (test (<= (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al)) 30))
 
     =>
     (bind ?id-novo-c (random 1000000 9999999))
@@ -227,7 +348,7 @@
             (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac)
             (data-validade-carta ?data-val-carta-cond) ))
     (assert (pedido-reserva (id-reserva ?num) (id-cliente ?id-novo-c)
-            (data-levantamento ?dl ?ml ?al) (data-devolucao ?data-dev)
+            (data-levantamento ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad)
             (classe ?classe) (modelo ?modelo) ))
     (retract ?reserva-nao-cliente) ; cliente deixa de ser nao cliente
 
@@ -311,8 +432,7 @@
         (km-percorridos ?km-percorridos) ))
     (retract ?carro-disponivel)
     (retract ?associa-carro)
-    (printout t "Foi afetado o carro "?matricula" ao pedido de reserva "
-?numpedido crlf)
+    (printout t "Foi afetado o carro "?matricula" ao pedido de reserva " ?numpedido crlf)
 
 )
 
