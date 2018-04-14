@@ -73,7 +73,8 @@
 	(km-percorridos 854123) (matricula 89-TY-36))
 )
 
-(deffunction run ()
+(deffunction start ()
+    (printout t "Loading factos-grupo16.clp" crlf)
     (load factos-grupo16.clp)
     (reset)
     (printout t "Qual o dia que quer considerar como o primeiro dia? (dd/mm/yyyy) ")
@@ -175,18 +176,13 @@
     na lista negra." crlf)
 )
 
-;regra que testa se um cliente é válido
-;ou seja, se tem mais de 25 anos e se
-;tem carta de condução há mais de 1 ano
-(defrule cliente-valido-primeira-reserva
+; regra que testa se uma reserva de um cliente é válida
+(defrule cliente-primeira-reserva
     ?nova-reserva <- (reserva-ativada ?num)
     (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento
         ?dl ?ml ?al))
     (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
         ?ac))
-    ; teste para verificar se tem mais de 25 anos e se tem a carta ha mais de 1 ano
-    (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
-    (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
 
     ; TODO fazer a condicao de 30 dias
 =>
@@ -195,7 +191,7 @@
     (printout t "O pedido de reserva " ?num " foi aceite." crlf)
 )
 
-;regra que testa se um cliente é válido de acordo com reservas já feitas
+; regra que testa se uma reserva é válida, sendo que o cliente já tem mais reservas
 (defrule cliente-valido-mais-reservas
     ?nova-reserva <- (reserva-ativada ?num)
     (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento
@@ -204,11 +200,6 @@
     (data-devolucao ?dd ?md ?ad))
     (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
         ?ac))
-    ; teste para verificar se tem mais de 25 anos e se tem a carta ha mais de 1 ano
-    (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
-    (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
-    ; teste para verificar se tem outra reserva em curso
-    (test (or (or (>= ?dl ?dd) (>= ?ml ?md)) (>= ?al ?ad)))
 
     ; TODO fazer a condicao de 30 dias
 =>
@@ -217,6 +208,31 @@
     (printout t "O pedido de reserva " ?num " foi aceite." crlf)
 )
 
+; regra que testa se um não-cliente tem menos de 25 anos
+(defrule nao-cliente-menos-25
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva-nao-cliente (id-reserva ?num) (data-levantamento
+        ?dl ?ml ?al)  (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+    ; teste para verificar se tem menos de 25 anos
+    (test (and (< (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)))
+=>
+    (retract ?nova-reserva)
+    (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
+    (printout t "Motivo: O cliente " ?id-c " tem menos de 25 anos." crlf)
+)
+
+;regra que testa se um nãocliente tem a carta ha menos de 1 ano
+(defrule nao-cliente-menos-1-ano-carta
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva-nao-cliente (id-reserva ?num) (data-levantamento
+        ?dl ?ml ?al)  (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac))
+    ; teste para verificar se tem menos de 1 ano de carta
+    (test (and (< (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+=>
+    (retract ?nova-reserva)
+    (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
+    (printout t "Motivo: Nao cliente tem menos de 1 ano de carta" crlf)
+)
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
 ; cliente nao registado) e se esta reserva ativada é válida
@@ -252,7 +268,7 @@
 )
 
 ; Regras relacionadas com associacao de carros a reservas
-;afeta um carro cujo pedido inclui marca e modelo
+; afeta um carro cujo pedido inclui marca e modelo
 (defrule afeta-carro-reserva-modelo
     ?associa-carro <- (associa-carro-res ?numpedido)
     ?pedidos-reserva <- (pedido-reserva
@@ -292,8 +308,7 @@
     (retract ?carro-disponivel)
     (retract ?associa-carro)
     (retract ?reserva-ativada)
-    (printout t "Foi afetado o carro "?matricula" ao pedido de reserva "
-?numpedido crlf)
+    (printout t "Foi afetado o carro " ?matricula " ao pedido de reserva " ?numpedido crlf)
 
 )
 
@@ -310,7 +325,7 @@
     ?carro-disponivel <- (automovel-disponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) )
-    ?reserva-ativada <- (reserva-ativada ?numpedido
+    ?reserva-ativada <- (reserva-ativada ?numpedido)
     =>
     (assert (reserva-com-carro ?numpedido ?matricula))
     (assert (automovel-indisponivel
@@ -320,14 +335,14 @@
     (retract ?associa-carro)
     (retract ?reserva-ativada)
     (printout t "Foi afetado o carro "?matricula" ao pedido de reserva "
-?numpedido crlf)
+    ?numpedido crlf)
 
 )
 
 ; Regras relacionadas com o inicio de um novo dia
 ; no inicio de cada dia os carros sao levados para aluguer
-(defrule inicio-dia
-    (dia-corrente ?dia ?mes ?ano)
+(defrule levantamento-carros
+    (levanta-carros ?dia ?mes ?ano)
     ?reserva <- (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
                 (data-levantamento ?dia ?mes ?ano))
     ?reserva-com-carro <- (reserva-com-carro ?numpedido ?matricula)
@@ -335,9 +350,21 @@
     (printout t "Reserva " ?numpedido ": " ?matricula crlf)
 )
 
+; Regra relacionada com inicio de um novo dia
+(defrule inicia-dia
+    ?inicia-dia <- (inicia-dia)
+    (dia-corrente ?dia ?mes ?ano)
+    =>
+    (printout t "Dia que se inicia: " ?dia "/" ?mes "/" ?ano crlf)
+    (printout t "Foram levantadas as seguintes encomendas:" crlf)
+    (assert (levanta-carros ?dia ?mes ?ano))
+    (retract ?inicia-dia)
+)
+
 ; Regras recepcao de carros
 ; Recebe um carro em que existiu pagamento mas veio com danos
 (defrule recebe-carro-com-danos
+    (assert (carro-recebido ?numpedido))
     (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq ?pagou sim))
         (ha-danos ?danos&:(eq ?danos sim)))
     (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c))
@@ -355,6 +382,7 @@
 
 ; Recebe um carro sem danos, mas sem pagamento
 (defrule recebe-carro-sem-pagamento
+    (assert (carro-recebido ?numpedido))
     (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq ?pagou nao))
         (ha-danos ?danos&:(eq ?danos nao)))
     (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c))
@@ -373,6 +401,7 @@
 
 ; Recebe um carro com danos e sem pagamento
 (defrule recebe-carro-sem-pagamento-com-danos
+    (assert (carro-recebido ?numpedido))
     (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq
         ?pagou nao))
         (ha-danos ?danos&:(eq ?danos sim)))
@@ -392,6 +421,7 @@
 
 ; Recebe um carro sem danos e com pagamento
 (defrule recebe-carro-sucesso
+    (assert (carro-recebido ?numpedido))
     (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou&:(eq
         ?pagou sim))
         (ha-danos ?danos&:(eq ?danos nao)))
@@ -407,10 +437,9 @@
 
 ;carro nao foi entregue na data estipulada, portanto deve se contactar o cliente
 (defrule prazo-nao-cumprido
-
 	?dia-corrente <- (dia-corrente ?dia ?mes ?ano)
 	?reserva <- (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
-(data-devolucao ?d-d ?m-d ?a-d)	)
+    (data-devolucao ?d-d ?m-d ?a-d)	)
 	?reserva-com-carro <- (reserva-com-carro ?numpedido ?matricula)
 
 	(test
@@ -431,8 +460,6 @@
 
 )
 
-
-
 ;;;;;;;;;;;;;
 ;; FUNCOES ;;
 ;;;;;;;;;;;;;
@@ -451,20 +478,13 @@
 
 ; inicia um novo dia
 (deffunction aluga-carros ()
-    (printout t "Foram levantadas as seguintes encomendas:" crlf)
+    (assert (inicia-dia))
     (run)
 )
 
 ; recepcao de um automovel previamente alugado
 (deffunction recebe-carro (?numpedido)
-    (printout t "O carro tem danos? (sim / nao)" crlf)
-    (bind ?danos (read))
-
-    (printout t "O pagamento foi efetuado? (sim / nao)" crlf)
-    (bind ?pagou (read))
-
-    (assert (recepcao-automovel (id-reserva ?numpedido) (cliente-pagou ?pagou)
-        (ha-danos ?danos)))
+    (assert (carro-recebido ?numpedido))
     (run)
 )
 
