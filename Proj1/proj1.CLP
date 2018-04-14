@@ -288,7 +288,6 @@
         (km-percorridos ?km-percorridos) ))
     (retract ?carro-disponivel)
     (retract ?associa-carro)
-    (assert (reserva-ativada ?numpedido))
     (printout t "Foi afetado o carro "?matricula" ao pedido de reserva "
 ?numpedido crlf)
 
@@ -315,7 +314,6 @@
     (assert (automovel-indisponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) ))
-    (assert (reserva-ativada ?numpedido))
     (retract ?carro-disponivel)
     (retract ?associa-carro)
     (printout t "Foi afetado o carro "?matricula" ao pedido de reserva "
@@ -343,7 +341,6 @@
     (assert (automovel-indisponivel
         (classe ?classe) (marcamodelo ?marcamodelo) (matricula ?matricula)
         (km-percorridos ?km-percorridos) ))
-    (assert (reserva-ativada ?numpedido))
     (retract ?carro-disponivel)
     (retract ?associa-carro)
     (printout t "Foi afetado o carro "?matricula" ao pedido de reserva "
