@@ -1,3 +1,8 @@
+; Grupo 16
+; Frederico Apolónia
+; Tiago Santos
+; Renato Gondin
+
 (deffacts clientes
     (cliente (id 1111111) (name Renato Maudim) (data-nascimento 26 06 1986)
     (data-carta 12 5 2005) (data-validade-carta 12 5 2050))

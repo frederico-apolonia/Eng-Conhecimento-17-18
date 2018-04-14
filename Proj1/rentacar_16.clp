@@ -1,4 +1,4 @@
-; Grupo xx
+; Grupo 16
 ; Frederico Apolónia
 ; Tiago Santos
 ; Renato Gondin
@@ -108,38 +108,6 @@
     (assert (dia-corrente (string-to-field ?day) (string-to-field ?month)
     (string-to-field ?year)))
 )
-
-(deffunction calcula-anos (?d ?m ?a ?d1 ?m1 ?a1 ?idademinima)
-
-    (if (>= (- ?a ?a1) ?idademinima)
-        then
-        (if (eq (- ?a ?a1) ?idademinima)
-            then
-            (if (< (- ?m ?m1) 0)
-                then
-                (return ?idademinima)
-                else
-                (if (eq 0 (- ?m ?m1))
-                    then
-                    (if (> 0 (- ?a ?a1))
-                        then
-                        (return ?idademinima)
-                        else
-                        (return (- ?idademinima 1))
-                    )
-                    else
-                    (return (- ?idademinima 1))
-                )
-            )
-            else
-            (return (- ?a ?a1))
-        )
-        else
-        (return (- ?a ?a1))
-    )
-
-)
-
 
 ;;;;;;;;;;;;
 ;; REGRAS ;;
