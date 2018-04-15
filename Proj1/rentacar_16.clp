@@ -217,7 +217,7 @@
     (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c)
     (data-devolucao ?d-d ?m-d ?a-d))
 
-    (test (or (or (< ?d ?d-d ) (< ?m ?m-d) ) (> ?a ?a-d) ) )
+    (test (or (and (< ?d ?d-d ) (< ?m ?m-d) ) (> ?a ?a-d) ) )
 
     =>
     (retract ?nova-reserva)
@@ -243,7 +243,8 @@
     (pedido-reserva (id-reserva ?num) (id-cliente ?id-c) (data-levantamento
         ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad))
     (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
-        ?ac))
+        ?ac) (data-validade-carta ?dvc ?mvc ?avc))
+    (test (> (data-em-dias ?dvc ?mvc ?avc) (data-em-dias ?dl ?ml ?al)))
     (test (<= (abs (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al))) 30))
 =>
     (retract ?nova-reserva)
@@ -259,11 +260,11 @@
     (pedido-reserva (id-reserva ?num1&:(< ?num1 ?num)) (id-cliente ?id-c)
     (data-devolucao ?dd1 ?md1 ?ad1))
     (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
-        ?ac))
+        ?ac) (data-validade-carta ?dvc ?mvc ?avc))
 
     ; teste para verificar se tem outra reserva em curso
     (test (or (or (>= ?dl ?dd1) (>= ?ml ?md1)) (>= ?al ?ad1)))
-
+    (test (> (data-em-dias ?dvc ?mvc ?avc) (data-em-dias ?dl ?ml ?al)))
     (test (<= (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al)) 30))
 =>
     (retract ?nova-reserva)
@@ -310,7 +311,7 @@
     (printout t "Motivo: Reserva com mais de 30 dias" crlf)
 )
 
-;regra que testa se um nãocliente tem uma reserva superior a 30 dias
+;regra que testa se um cliente tem uma reserva superior a 30 dias
 (defrule cliente-mais-30-dias
     ?nova-reserva <- (reserva-ativada ?num)
     (pedido-reserva (id-reserva ?num) (data-levantamento
@@ -321,6 +322,35 @@
     (retract ?nova-reserva)
     (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
     (printout t "Motivo: Reserva com mais de 30 dias" crlf)
+)
+
+; Verifica se a carta de conducao esta expirada
+(defrule cliente-carta-cond-expirada
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedido-reserva (id-reserva ?num) (data-levantamento
+        ?dl ?ml ?al))
+
+    (cliente (id ?id-c) (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc
+        ?ac) (data-validade-carta ?dvc ?mvc ?avc))
+
+    (test (< (data-em-dias ?dvc ?mvc ?avc) (data-em-dias ?dl ?ml ?al)))
+=>
+    (retract ?nova-reserva)
+    (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
+    (printout t "Motivo: O cliente tem a carta de conducao expirada" crlf)
+)
+; Verifica se a carta de conducao (nao cliente) esta expirada
+
+(defrule nao-cliente-carta-cond-expirada
+    ?nova-reserva <- (reserva-ativada ?num)
+    (pedidos-reserva-nao-cliente (id-reserva ?num) (data-levantamento
+        ?dl ?ml ?al) (data-validade-carta ?dvc ?mvc ?avc))
+
+    (test (< (data-em-dias ?dvc ?mvc ?avc) (data-em-dias ?dl ?ml ?al)))
+=>
+    (retract ?nova-reserva)
+    (printout t "O pedido de reserva " ?num " foi rejeitado." crlf)
+    (printout t "Motivo: A carta de conducao do nao cliente esta expirada" crlf)
 )
 
 ; verifica se a reserva que foi ativada e ativada por um novo cliente (ou seja,
@@ -334,10 +364,12 @@
         (classe ?classe) (modelo ?modelo)
         (nome $?nome)
         (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac)
-        (data-validade-carta $?data-val-carta-cond) )
+        (data-validade-carta ?dvc ?mvc ?avc) )
 
         (test (and (>= (calcula-anos ?dl ?ml ?al ?dn ?mn ?an 25) 25)
         (>= (calcula-anos ?dl ?ml ?al ?dc ?mc ?ac 1) 1)))
+
+        (test (> (data-em-dias ?dvc ?mvc ?avc) (data-em-dias ?dl ?ml ?al)))
 
         (test (<= (- (data-em-dias ?dd ?md ?ad) (data-em-dias ?dl ?ml ?al)) 30))
 
@@ -346,7 +378,7 @@
 
     (assert (cliente (id ?id-novo-c) (name ?nome)
             (data-nascimento ?dn ?mn ?an) (data-carta ?dc ?mc ?ac)
-            (data-validade-carta ?data-val-carta-cond) ))
+            (data-validade-carta ?dvc ?mvc ?avc) ))
     (assert (pedido-reserva (id-reserva ?num) (id-cliente ?id-novo-c)
             (data-levantamento ?dl ?ml ?al) (data-devolucao ?dd ?md ?ad)
             (classe ?classe) (modelo ?modelo) ))
@@ -440,9 +472,10 @@
 ; no inicio de cada dia os carros sao levados para aluguer
 (defrule levantamento-carros
     (levanta-carros ?dia ?mes ?ano)
-    ?reserva <- (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
-                (data-levantamento ?dia ?mes ?ano))
-    ?reserva-com-carro <- (reserva-com-carro ?numpedido ?matricula)
+    (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
+        (data-levantamento ?dia ?mes ?ano))
+    (reserva-com-carro ?numpedido ?matricula)
+    (reserva-valida ?numpedido)
     =>
     (printout t "Reserva " ?numpedido ": " ?matricula crlf)
 )
@@ -584,7 +617,7 @@
 
 ;carro nao foi entregue na data estipulada, portanto deve se contactar o cliente
 (defrule prazo-nao-cumprido
-	?dia-corrente <- (dia-corrente ?dia ?mes ?ano)
+	(falta-carros ?dia ?mes ?ano)
 	?reserva <- (pedido-reserva (id-reserva ?numpedido) (id-cliente ?id-c)
     (data-devolucao ?dia ?mes ?ano)	)
 	?reserva-com-carro <- (reserva-com-carro ?numpedido ?matricula)

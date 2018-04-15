@@ -21,7 +21,8 @@
     (classe suv) (modelo smart))
     (pedido-reserva (id-reserva 24) (id-cliente 5555555)
     (data-levantamento 19 3 2018) (data-devolucao 30 4 2018) )
-
+    (pedido-reserva (id-reserva 26) (id-cliente 5555555)
+    (data-levantamento 20 5 2018) (data-devolucao 30 5 2018) )
     (pedidos-reserva-nao-cliente (id-reserva 23)
     (data-levantamento 1 1 2018) (data-devolucao 15 1 2018)
     (nome Ze Pascal) (data-nascimento 15 02 1996)
